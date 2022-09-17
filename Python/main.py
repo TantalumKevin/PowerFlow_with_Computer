@@ -5,7 +5,7 @@ import numpy as np
 
 class Node:
     # 节点类
-    def __init__(self, type, P = 0, Q = 0, U = 1, delta = 45) :
+    def __init__(self, type, P = 0, Q = 0, U = 1, delta = 0) :
         self.type = type
         self.P = P
         self.Q = Q
@@ -85,13 +85,9 @@ nodes = [
     Node("PV",P = 0.7, U = 1.05),
     Node("PQ",P = -2.8, Q = -1.2)]
 n = 3
-Un = np.array([node.U for node in nodes])
 deltaN = np.zeros([n,n])
 Pn = np.array([node.P for node in nodes])
 Qn = np.array([node.Q for node in nodes])
-for i in range(n):
-    for k in range(n):
-        deltaN[i,k] = nodes[i].delta - nodes[k].delta
 
 # 各节点间支路阻抗
 y = np.array([
@@ -120,11 +116,17 @@ G = np.real(Y)
 B = np.imag(Y)
 
 # 迭代次数
-iterations = 1
+iterations = 20
 # 容许误差
 epsilon = 1
 
 for k in range(iterations):
+    
+    Un = np.array([node.U for node in nodes])
+    for i in range(n):
+        for k in range(n):
+            deltaN[i,k] = nodes[i].delta - nodes[k].delta
+            
     deltaPQ = DeltaPQ()
     print("====================================================")
     print("当前功率误差向量 = ")
@@ -132,10 +134,27 @@ for k in range(iterations):
     print("====================================================")
     if max(abs(deltaPQ.copy())) < epsilon:
         # 收敛判据
-        pass
+        break
     J = Jacoby()
     print("====================================================")
     print("当前雅各比矩阵J = ")
     print(J)
     print("====================================================")
-    print(DeltaUdot(deltaPQ.copy(), J.copy()))
+    deltaPQ = np.delete(deltaPQ , [0,3,4] , axis=0 )
+    J = np.delete(J , [0,3,4] , axis=0 )
+    J = np.delete(J , [0,3,4] , axis=1 )
+    correctionU = DeltaUdot(deltaPQ.copy(), J.copy())
+    for node in nodes:
+        if node.type == "BN":
+            # 平衡节点，跳过
+            continue
+        elif node.type == "PV":
+            # PV节点，仅修改δ
+            node.delta += correctionU[0,0]
+        else :
+            # PQ节点，修改U、δ
+            node.U *= 1+correctionU[2,0]
+            node.delta += correctionU[1,0]
+            
+print(np.array([node.U for node in nodes]))
+print(np.array([node.delta for node in nodes]))
