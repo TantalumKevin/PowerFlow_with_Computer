@@ -62,10 +62,10 @@ def Jacoby():
                 L[i,j] = H[i,j]
             else :
                 # 对角
-                H[i,j] = - Un[i]**2*B[i,j] - Qn[i]
-                N[i,j] = + Un[i]**2*G[i,j] + Pn[i]
-                M[i,j] = - Un[i]**2*G[i,j] + Pn[i]
-                L[i,j] = - Un[i]**2*B[i,j] + Qn[i]
+                H[i,j] = - Un[i]*Un[i]*B[i,j] - Qn[i]
+                N[i,j] = + Un[i]*Un[i]*G[i,j] + Pn[i]
+                M[i,j] = - Un[i]*Un[i]*G[i,j] + Pn[i]
+                L[i,j] = - Un[i]*Un[i]*B[i,j] + Qn[i]
                 
     #返回拼接雅可比矩阵
     return np.append(
@@ -132,7 +132,7 @@ for k in range(iterations):
     print("====================================================")
     if max(abs(deltaPQ.copy())) < epsilon:
         # 收敛判据
-        break
+        pass
     J = Jacoby()
     print("====================================================")
     print("当前雅各比矩阵J = ")
