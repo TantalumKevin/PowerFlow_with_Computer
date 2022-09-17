@@ -1,8 +1,11 @@
+from math import cos, sin
+from os import P_NOWAIT
+from tkinter import N
 import numpy as np
 
-class node:
+class Node:
     # 节点类
-    def __init__(self, type, P = 0, Q = 0, U = 1, delta = 0) :
+    def __init__(self, type, P = 0, Q = 0, U = 1, delta = 45) :
         self.type = type
         self.P = P
         self.Q = Q
@@ -19,19 +22,120 @@ class node:
         print("当前节点δ= " + str(self.delta))
         print("*********************************************")
 
-       
-            
+def DeltaPQ():
+    # 功率误差
+    deltaP = np.zeros([n,1])
+    deltaQ = np.zeros([n,1])
+    for i in range(n):
+        sumP = 0
+        sumQ = 0
+        for j in range(n):
+            sumP += Un[j]*(
+                G[i,j] * cos(deltaN[i,j]) + 
+                B[i,j] * sin(deltaN[i,j]))
+            sumQ += Un[j]*(
+                G[i,j] * sin(deltaN[i,j]) - 
+                B[i,j] * cos(deltaN[i,j]))
+        deltaP[i,0] = Pn[i] - Un[i]*sumP
+        deltaQ[i,0] = Qn[i] - Un[i]*sumQ
+
+    return np.append(deltaP,deltaQ,axis=0)   
+
+def Jacoby():
+    # 初始化分块雅可比矩阵
+    H = np.zeros([n,n])
+    M = np.zeros([n,n])
+    N = np.zeros([n,n])
+    L = np.zeros([n,n])
+    
+    for i in range(n):
+        for j in range(n):
+            if i != j :
+                # 非对角
+                H[i,j] = Un[i] * Un[j] * (
+                    G[i,j] * sin(deltaN[i,j]) - 
+                    B[i,j] * cos(deltaN[i,j]))
+                M[i,j] = - Un[i] * Un[j] * (
+                    G[i,j] * cos(deltaN[i,j]) + 
+                    B[i,j] * sin(deltaN[i,j]))
+                N[i,j] = -M[i,j]
+                L[i,j] = H[i,j]
+            else :
+                # 对角
+                H[i,j] = - Un[i]**2*B[i,j] - Qn[i]
+                N[i,j] = + Un[i]**2*G[i,j] + Pn[i]
+                M[i,j] = - Un[i]**2*G[i,j] + Pn[i]
+                L[i,j] = - Un[i]**2*B[i,j] + Qn[i]
+                
+    #返回拼接雅可比矩阵
+    return np.append(
+        np.append(H,N,axis=0),
+        np.append(M,L,axis=0),
+        axis=1)     
+
+def DeltaUdot(pq,j):
+    # 电压幅值、相位误差
+    return np.matmul(np.linalg.inv(j),pq)
+
 print("本例采用牛-拉法机算3节点潮流一次迭代")
 print("=====================================================")
 
 nodes = [
-    node("BN",U = 1, delta = 0),
-    node("PV",P = 0.7, U = 1.05),
-    node("PQ",P = -2.8, Q = -1.2)]
+    Node("BN",U = 1, delta = 0),
+    Node("PV",P = 0.7, U = 1.05),
+    Node("PQ",P = -2.8, Q = -1.2)]
+n = 3
+Un = np.array([node.U for node in nodes])
+deltaN = np.zeros([n,n])
+Pn = np.array([node.P for node in nodes])
+Qn = np.array([node.Q for node in nodes])
+for i in range(n):
+    for k in range(n):
+        deltaN[i,k] = nodes[i].delta - nodes[k].delta
 
-Z = np.array([
-    0, 0.1j, 0.1j,
-    0.1j, 0, 0.1j,
-    0.1j, 0.1j, 0]).reshape([3,3])
+# 各节点间支路阻抗
+y = np.array([
+    0, 1/0.1j, 1/0.1j,
+    1/0.1j, 0, 1/0.1j,
+    1/0.1j, 1/0.1j, 0]).reshape([n,n])
+# print(Z.shape)
+# 由于我的矩阵法电路知识已经不足以支撑我列出ZY之间的矩阵关系式
+# 所以我选择直接循环计算
+Y = np.zeros([n,n]).astype("complex")
+for i in range(n):
+    for k in range(n):
+        if i == k :
+            #Yii
+            Y[i,k] = np.sum(y[i,:])
+        else :
+            #Yik
+            Y[i,k] = -y[i,k]
+print("=====================================================")
+print("节点导纳矩阵Y = ")
+print(Y)
+print("=====================================================")
+# 实虚分离构造GB矩阵便于计算
+# 注意B矩阵为虚部!(即不含j)
+G = np.real(Y)
+B = np.imag(Y)
 
-#print(Z.shape)
+# 迭代次数
+iterations = 1
+# 容许误差
+epsilon = 1
+
+for k in range(iterations):
+    deltaPQ = DeltaPQ()
+    print("====================================================")
+    print("当前功率误差向量 = ")
+    print(deltaPQ)
+    print("====================================================")
+    if max(abs(deltaPQ.copy())) < epsilon:
+        # 收敛判据
+        break
+    J = Jacoby()
+    print("====================================================")
+    print("当前雅各比矩阵J = ")
+    print(J)
+    print("====================================================")
+    print(DeltaUdot(deltaPQ.copy(), J.copy()))
