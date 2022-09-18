@@ -66,6 +66,7 @@ def Jacoby():
                 N[i,j] = + Un[i]*Un[i]*G[i,j] + Pn[i]
                 M[i,j] = - Un[i]*Un[i]*G[i,j] + Pn[i]
                 L[i,j] = - Un[i]*Un[i]*B[i,j] + Qn[i]
+        
                 
     #返回拼接雅可比矩阵
     return np.append(
@@ -116,7 +117,7 @@ G = np.real(Y)
 B = np.imag(Y)
 
 # 迭代次数
-iterations = 20
+iterations = 1
 # 容许误差
 epsilon = 1
 
@@ -144,6 +145,18 @@ for k in range(iterations):
     J = np.delete(J , [0,3,4] , axis=0 )
     J = np.delete(J , [0,3,4] , axis=1 )
     correctionU = DeltaUdot(deltaPQ.copy(), J.copy())
+    ("====================================================")
+    print("整理后功率误差向量 = ")
+    print(deltaPQ)
+    print("====================================================")
+    ("====================================================")
+    print("整理后雅各比矩阵J = ")
+    print(J)
+    print("====================================================")
+    ("====================================================")
+    print("电压误差矩阵 = ")
+    print(correctionU)
+    print("====================================================")
     for node in nodes:
         if node.type == "BN":
             # 平衡节点，跳过

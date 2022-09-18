@@ -10,7 +10,7 @@ G = real(Y);
 B = imag(Y);
 
 
-for it = 1:10
+for it = 1:1
     deltaN = zeros(3);
     for i = 1:3
         for j = 1:3
