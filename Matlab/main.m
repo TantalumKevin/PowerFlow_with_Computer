@@ -11,18 +11,20 @@ B = imag(Y);
 
 
 for it = 1:1
+    Pit = P;
+    Qit = Q;
+    for i = 1:3
+        Pit(i) = U(i) * sum(U .* ((G(i,:) .* cos(deltaN(i,:)) + (B(i,:) .* sin(deltaN(i,:))))));
+        Qit(i) = U(i) * sum(U .* ((G(i,:) .* sin(deltaN(i,:)) - (B(i,:) .* cos(deltaN(i,:))))));
+    end
     deltaN = zeros(3);
     for i = 1:3
         for j = 1:3
             deltaN(i,j) = delta(i) - delta(j);
         end
     end
-    deltaP = zeros(3,1);
-    deltaQ = zeros(3,1);
-    for i = 1:3
-        deltaP(i) = P(i) - U(i) * sum(U .* ((G(i,:) .* cos(deltaN(i,:)) + (B(i,:) .* sin(deltaN(i,:))))));
-        deltaQ(i) = Q(i) - U(i) * sum(U .* ((G(i,:) .* sin(deltaN(i,:)) - (B(i,:) .* cos(deltaN(i,:))))));
-    end
+    deltaP = P - Pit;
+    deltaQ = Q - Qit;
     if max(abs([deltaP deltaQ])) < 1 
         break
     end
@@ -39,17 +41,17 @@ for it = 1:1
                 M(i,j) = -N(i,j);
                 L(i,j) =  H(i,j);
             else
-                H(i,j) = -U(i)*U(j)*B(i,j)-Q(i);
-                N(i,j) = +U(i)*U(j)*G(i,j)+P(i);
-                M(i,j) = -U(i)*U(j)*G(i,j)+P(i);
-                L(i,j) = -U(i)*U(j)*B(i,j)+Q(i);
+                H(i,j) = -U(i)*U(j)*B(i,j)-Qit(i);
+                N(i,j) = +U(i)*U(j)*G(i,j)+Pit(i);
+                M(i,j) = -U(i)*U(j)*G(i,j)+Pit(i);
+                L(i,j) = -U(i)*U(j)*B(i,j)+Qit(i);
             end
         end
     end
     temp1 = [H N];
     temp2 = [M L];
     J = [temp1(2:3,2:3) temp1(2:3,6);temp2(3,2:3) temp2(3,6)];
-    correctionPQ = [P(1,2:3)';Q(3)];
+    correctionPQ = [deltaP(1,2:3)';deltaQ(3)];
     correctionU = J \ correctionPQ;
     U = [1 1.05 U(3)*(1+correctionU(3))];
     delta = [0 delta(2)+correctionU(1) delta(3)+correctionU(2)];

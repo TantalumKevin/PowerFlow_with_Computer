@@ -1,4 +1,5 @@
 from math import cos, sin
+from msilib import PID_TEMPLATE
 from os import P_NOWAIT
 from tkinter import N
 import numpy as np
@@ -26,6 +27,8 @@ def DeltaPQ():
     # 功率误差
     deltaP = np.zeros([n,1])
     deltaQ = np.zeros([n,1])
+    Pit = np.zeros([n,1])
+    Qit = np.zeros([n,1])
     for i in range(n):
         sumP = 0
         sumQ = 0
@@ -38,8 +41,10 @@ def DeltaPQ():
                 B[i,j] * cos(deltaN[i,j]))
         deltaP[i,0] = Pn[i] - Un[i]*sumP
         deltaQ[i,0] = Qn[i] - Un[i]*sumQ
+        Pit[i,0] = Un[i]*sumP
+        Qit[i,0] = Un[i]*sumQ
 
-    return np.append(deltaP,deltaQ,axis=0)   
+    return np.append(deltaP,deltaQ,axis=0),Pit,Qit   
 
 def Jacoby():
     # 初始化分块雅可比矩阵
@@ -62,10 +67,10 @@ def Jacoby():
                 L[i,j] = H[i,j]
             else :
                 # 对角
-                H[i,j] = - Un[i]*Un[i]*B[i,j] - Qn[i]
-                N[i,j] = + Un[i]*Un[i]*G[i,j] + Pn[i]
-                M[i,j] = - Un[i]*Un[i]*G[i,j] + Pn[i]
-                L[i,j] = - Un[i]*Un[i]*B[i,j] + Qn[i]
+                H[i,j] = - Un[i]*Un[i]*B[i,j] - Qit[i]
+                N[i,j] = + Un[i]*Un[i]*G[i,j] + Pit[i]
+                M[i,j] = - Un[i]*Un[i]*G[i,j] + Pit[i]
+                L[i,j] = - Un[i]*Un[i]*B[i,j] + Qit[i]
         
                 
     #返回拼接雅可比矩阵
@@ -128,7 +133,7 @@ for k in range(iterations):
         for k in range(n):
             deltaN[i,k] = nodes[i].delta - nodes[k].delta
             
-    deltaPQ = DeltaPQ()
+    deltaPQ, Pit, Qit = DeltaPQ()
     print("====================================================")
     print("当前功率误差向量 = ")
     print(deltaPQ)
@@ -168,6 +173,9 @@ for k in range(iterations):
             # PQ节点，修改U、δ
             node.U *= 1+correctionU[2,0]
             node.delta += correctionU[1,0]
-            
-print(np.array([node.U for node in nodes]))
-print(np.array([node.delta for node in nodes]))
+    print("=====================================================")
+    print("修正后节点电压幅值矩阵 = ")
+    print(np.array([node.U for node in nodes]))
+    print("修正后节点电压相角矩阵 = ")
+    print(np.array([node.delta for node in nodes]))
+    print("=====================================================")   
